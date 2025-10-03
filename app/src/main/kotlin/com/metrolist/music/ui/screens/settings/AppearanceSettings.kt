@@ -55,7 +55,7 @@ import com.metrolist.music.constants.LyricsClickKey
 import com.metrolist.music.constants.LyricsScrollKey
 import com.metrolist.music.constants.LyricsTextPositionKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
-import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
+// Removed UseNewMiniPlayerDesignKey from appearance settings
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PureBlackKey
@@ -105,10 +105,7 @@ fun AppearanceSettings(
         UseNewPlayerDesignKey,
         defaultValue = true
     )
-    val (useNewMiniPlayerDesign, onUseNewMiniPlayerDesignChange) = rememberPreference(
-        UseNewMiniPlayerDesignKey,
-        defaultValue = true
-    )
+    // Removed: new mini player toggle
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(
         HidePlayerThumbnailKey,
         defaultValue = false
@@ -387,12 +384,7 @@ fun AppearanceSettings(
             onCheckedChange = onUseNewPlayerDesignChange,
         )
 
-        SwitchPreference(
-            title = { Text(stringResource(R.string.new_mini_player_design)) },
-            icon = { Icon(painterResource(R.drawable.nav_bar), null) },
-            checked = useNewMiniPlayerDesign,
-            onCheckedChange = onUseNewMiniPlayerDesignChange,
-        )
+        // Removed: new mini player toggle UI
 
         EnumListPreference(
             title = { Text(stringResource(R.string.player_background_style)) },

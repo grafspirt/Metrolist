@@ -76,7 +76,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
-import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
+// Removed UseNewMiniPlayerDesignKey usage
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.extensions.togglePlayPause
 import com.metrolist.music.models.MediaMetadata
@@ -93,23 +93,12 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
 ) {
-    val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, true)
-    
-    if (useNewMiniPlayerDesign) {
-        NewMiniPlayer(
-            position = position,
-            duration = duration,
-            modifier = modifier,
-            pureBlack = pureBlack
-        )
-    } else {
-        LegacyMiniPlayer(
-            position = position,
-            duration = duration,
-            modifier = modifier,
-            pureBlack = pureBlack
-        )
-    }
+    LegacyMiniPlayer(
+        position = position,
+        duration = duration,
+        modifier = modifier,
+        pureBlack = pureBlack
+    )
 }
 
 @Composable

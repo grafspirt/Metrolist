@@ -106,7 +106,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
-import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
+// Removed UseNewMiniPlayerDesignKey usage
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
@@ -158,10 +158,7 @@ fun BottomSheetPlayer(
         UseNewPlayerDesignKey,
         defaultValue = true
     )
-    val (useNewMiniPlayerDesign) = rememberPreference(
-        UseNewMiniPlayerDesignKey,
-        defaultValue = true
-    )
+    val useNewMiniPlayerDesign = true // always legacy MiniPlayer
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.DEFAULT
@@ -190,7 +187,7 @@ fun BottomSheetPlayer(
                 if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
             useDarkTheme && pureBlack
         }
-    val backgroundColor = if (useNewMiniPlayerDesign) {
+    val backgroundColor = run {
         if (useBlackBackground && state.value > state.collapsedBound) {
             val progress = ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
                 .coerceIn(0f, 1f)
@@ -199,12 +196,6 @@ fun BottomSheetPlayer(
             val progress = ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
                 .coerceIn(0f, 1f)
             MaterialTheme.colorScheme.surfaceContainer.copy(alpha = progress)
-        }
-    } else {
-        if (useBlackBackground) {
-            lerp(MaterialTheme.colorScheme.surfaceContainer, Color.Black, state.progress)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
         }
     }
 
