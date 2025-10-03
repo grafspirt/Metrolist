@@ -69,6 +69,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -550,7 +551,6 @@ class MainActivity : ComponentActivity() {
                             dismissedBound = 0.dp,
                             collapsedBound = bottomInset +
                                 (if (!showRail && shouldShowNavigationBar) getNavPadding() else 0.dp) +
-                                (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp) +
                                 MiniPlayerHeight,
                             expandedBound = maxHeight,
                         )
@@ -565,7 +565,7 @@ class MainActivity : ComponentActivity() {
                         if (shouldShowNavigationBar && !showRail) {
                             bottom += NavigationBarHeight
                         }
-                        if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
+                        if (!showRail && !playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))
@@ -1014,7 +1014,7 @@ class MainActivity : ComponentActivity() {
                                                         )
                                                     }
                                                 },
-                                            containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                            containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
                                             contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                                         ) {
                                             navigationItems.fastForEach { screen ->
