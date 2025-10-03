@@ -61,6 +61,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -244,17 +245,18 @@ fun BottomSheetPlayer(
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
     LaunchedEffect(mediaMetadata?.id, playerBackground) {
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT && mediaMetadata?.thumbnailUrl != null) {
-            val cachedColors = gradientColorsCache[mediaMetadata.id]
+        val currentMetadata = mediaMetadata
+        if (playerBackground == PlayerBackgroundStyle.GRADIENT && currentMetadata?.thumbnailUrl != null) {
+            val cachedColors = gradientColorsCache[currentMetadata.id]
             if (cachedColors != null) {
                 gradientColors = cachedColors
             } else {
                 withContext(Dispatchers.IO) {
                     val request = ImageRequest.Builder(context)
-                        .data(mediaMetadata.thumbnailUrl)
+                        .data(currentMetadata.thumbnailUrl)
                         .size(Size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE))
                         .allowHardware(false)
-                        .memoryCacheKey("gradient_${mediaMetadata.id}")
+                        .memoryCacheKey("gradient_${currentMetadata.id}")
                         .build()
 
                     val result = runCatching {
@@ -274,7 +276,7 @@ fun BottomSheetPlayer(
                         )
                         
                         withContext(Dispatchers.Main) {
-                            gradientColorsCache[mediaMetadata.id] = extractedColors
+                            gradientColorsCache[currentMetadata.id] = extractedColors
                             gradientColors = extractedColors
                         }
                     } else {
@@ -478,13 +480,13 @@ fun BottomSheetPlayer(
             )
         },
     ) {
-        val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
-            val currentTitle by remember(mediaMetadata) {
-                derivedStateOf { mediaMetadata.title }
+        val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { currentMediaMetadata ->
+            val currentTitle by remember(currentMediaMetadata) {
+                derivedStateOf { currentMediaMetadata.title }
             }
             
-            val currentArtists by remember(mediaMetadata) {
-                derivedStateOf { mediaMetadata.artists.joinToString { it.name } }
+            val currentArtists by remember(currentMediaMetadata) {
+                derivedStateOf { currentMediaMetadata.artists.joinToString { it.name } }
             }
 
             val playPauseRoundness by remember(isPlaying) {
@@ -522,8 +524,8 @@ fun BottomSheetPlayer(
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() },
                                     onClick = {
-                                        if (mediaMetadata.album != null) {
-                                            navController.navigate("album/${mediaMetadata.album.id}")
+                                        if (currentMediaMetadata.album != null) {
+                                            navController.navigate("album/${currentMediaMetadata.album.id}")
                                             state.collapseSoft()
                                         }
                                     },
@@ -542,14 +544,14 @@ fun BottomSheetPlayer(
                     Spacer(Modifier.height(6.dp))
 
                     val annotatedString = buildAnnotatedString {
-                        mediaMetadata.artists.forEachIndexed { index, artist ->
+                        currentMediaMetadata.artists.forEachIndexed { index, artist ->
                             val tag = "artist_${artist.id.orEmpty()}"
                             pushStringAnnotation(tag = tag, annotation = artist.id.orEmpty())
                             withStyle(SpanStyle(color = TextBackgroundColor, fontSize = 16.sp)) {
                                 append(artist.name)
                             }
                             pop()
-                            if (index != mediaMetadata.artists.lastIndex) append(", ")
+                            if (index != currentMediaMetadata.artists.lastIndex) append(", ")
                         }
                     }
 
@@ -645,7 +647,7 @@ fun BottomSheetPlayer(
                                         type = "text/plain"
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/watch?v=${mediaMetadata.id}"
+                                            "https://music.youtube.com/watch?v=${currentMediaMetadata.id}"
                                         )
                                     }
                                     context.startActivity(Intent.createChooser(intent, null))
@@ -698,7 +700,7 @@ fun BottomSheetPlayer(
                                         type = "text/plain"
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/watch?v=${mediaMetadata.id}"
+                                            "https://music.youtube.com/watch?v=${currentMediaMetadata.id}"
                                         )
                                     }
                                 context.startActivity(Intent.createChooser(intent, null))
@@ -727,13 +729,13 @@ fun BottomSheetPlayer(
                             .clickable {
                                 menuState.show {
                                     PlayerMenu(
-                                        mediaMetadata = mediaMetadata,
+                                        mediaMetadata = currentMediaMetadata,
                                         navController = navController,
                                         playerBottomSheetState = state,
                                         onShowDetailsDialog = {
-                                            mediaMetadata.id.let {
+                                            currentMediaMetadata.id.let { id ->
                                                 bottomSheetPageState.show {
-                                                    ShowMediaInfo(it)
+                                                    ShowMediaInfo(id)
                                                 }
                                             }
                                         },
@@ -1141,8 +1143,8 @@ fun BottomSheetPlayer(
                     ) {
                         Spacer(Modifier.weight(1f))
 
-                        mediaMetadata?.let {
-                            controlsContent(it)
+                        mediaMetadata?.let { metadata ->
+                            controlsContent(metadata)
                         }
 
                         Spacer(Modifier.weight(1f))
@@ -1169,8 +1171,8 @@ fun BottomSheetPlayer(
                         )
                     }
 
-                    mediaMetadata?.let {
-                        controlsContent(it)
+                    mediaMetadata?.let { metadata ->
+                        controlsContent(metadata)
                     }
 
                     Spacer(Modifier.height(30.dp))
