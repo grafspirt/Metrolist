@@ -55,6 +55,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -76,8 +77,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -100,6 +101,8 @@ import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.request.CachePolicy
+import coil3.size.Size
 import coil3.toBitmap
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerConnection
@@ -153,6 +156,7 @@ fun BottomSheetPlayer(
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val coroutineScope = rememberCoroutineScope()
 
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) = rememberPreference(
         UseNewPlayerDesignKey,
@@ -240,47 +244,45 @@ fun BottomSheetPlayer(
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
     LaunchedEffect(mediaMetadata?.id, playerBackground) {
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT) {
-            val currentMetadata = mediaMetadata
-            if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
-                val cachedColors = gradientColorsCache[currentMetadata.id]
-                if (cachedColors != null) {
-                    gradientColors = cachedColors
-                } else {
+        if (playerBackground == PlayerBackgroundStyle.GRADIENT && mediaMetadata?.thumbnailUrl != null) {
+            val cachedColors = gradientColorsCache[mediaMetadata.id]
+            if (cachedColors != null) {
+                gradientColors = cachedColors
+            } else {
+                withContext(Dispatchers.IO) {
                     val request = ImageRequest.Builder(context)
-                        .data(currentMetadata.thumbnailUrl)
-                        .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
+                        .data(mediaMetadata.thumbnailUrl)
+                        .size(Size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE))
                         .allowHardware(false)
+                        .memoryCacheKey("gradient_${mediaMetadata.id}")
                         .build()
 
                     val result = runCatching {
-                        context.imageLoader.execute(request)
+                        context.imageLoader.execute(request).image
                     }.getOrNull()
 
                     if (result != null) {
-                        val bitmap = result.image?.toBitmap()
-                        if (bitmap != null) {
-                            val palette = withContext(Dispatchers.Default) {
-                                Palette.from(bitmap)
-                                    .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
-                                    .generate()
-                            }
-                            val extractedColors = PlayerColorExtractor.extractGradientColors(
-                                palette = palette,
-                                fallbackColor = fallbackColor
-                            )
-                            gradientColorsCache[currentMetadata.id] = extractedColors
+                        val bitmap = result.toBitmap()
+                        val palette = Palette.from(bitmap)
+                            .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
+                            .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                            .generate()
+                        
+                        val extractedColors = PlayerColorExtractor.extractGradientColors(
+                            palette = palette,
+                            fallbackColor = fallbackColor
+                        )
+                        
+                        withContext(Dispatchers.Main) {
+                            gradientColorsCache[mediaMetadata.id] = extractedColors
                             gradientColors = extractedColors
-                        } else {
-                            gradientColors = defaultGradientColors
                         }
                     } else {
-                        gradientColors = defaultGradientColors
+                        withContext(Dispatchers.Main) {
+                            gradientColors = defaultGradientColors
+                        }
                     }
                 }
-            } else {
-                gradientColors = emptyList()
             }
         } else {
             gradientColors = emptyList()
@@ -477,11 +479,17 @@ fun BottomSheetPlayer(
         },
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
-            val playPauseRoundness by animateDpAsState(
-                targetValue = if (isPlaying) 24.dp else 36.dp,
-                animationSpec = tween(durationMillis = 90, easing = LinearEasing),
-                label = "playPauseRoundness",
-            )
+            val currentTitle by remember(mediaMetadata) {
+                derivedStateOf { mediaMetadata.title }
+            }
+            
+            val currentArtists by remember(mediaMetadata) {
+                derivedStateOf { mediaMetadata.artists.joinToString { it.name } }
+            }
+
+            val playPauseRoundness by remember(isPlaying) {
+                derivedStateOf { if (isPlaying) 24.dp else 36.dp }
+            }
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -495,7 +503,7 @@ fun BottomSheetPlayer(
                     modifier = Modifier.weight(1f)
                 ) {
                     AnimatedContent(
-                        targetState = mediaMetadata.title,
+                        targetState = currentTitle,
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "",
                     ) { title ->
@@ -935,9 +943,9 @@ fun BottomSheetPlayer(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = PlayerHorizontalPadding),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PlayerHorizontalPadding),
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
                         ResizableIconButton(
@@ -1048,7 +1056,7 @@ fun BottomSheetPlayer(
                 PlayerBackgroundStyle.BLUR -> {
                     Crossfade(
                         targetState = mediaMetadata?.thumbnailUrl,
-                        animationSpec = tween(800)
+                        animationSpec = tween(600)
                     ) { thumbnailUrl ->
                         if (thumbnailUrl != null) {
                             Box(modifier = Modifier.alpha(backgroundAlpha)) {
@@ -1072,7 +1080,7 @@ fun BottomSheetPlayer(
                 PlayerBackgroundStyle.GRADIENT -> {
                     Crossfade(
                         targetState = gradientColors,
-                        animationSpec = tween(800)
+                        animationSpec = tween(600)
                     ) { colors ->
                         if (colors.isNotEmpty()) {
                             val gradientColorStops = if (colors.size >= 3) {
