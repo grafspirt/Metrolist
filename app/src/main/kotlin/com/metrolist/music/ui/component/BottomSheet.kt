@@ -108,7 +108,8 @@ fun BottomSheet(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = ((state.progress - 0.25f) * 4).coerceIn(0f, 1f)
+                        // Smoothly fade in full content as the sheet expands
+                        alpha = state.progress.coerceIn(0f, 1f)
                     },
                 content = content,
             )
@@ -119,7 +120,8 @@ fun BottomSheet(
                 modifier =
                 Modifier
                     .graphicsLayer {
-                        alpha = 1f - (state.progress * 4).coerceAtMost(1f)
+                        // Smoothly fade out collapsed content as the sheet expands
+                        alpha = 1f - state.progress.coerceIn(0f, 1f)
                     }.clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -211,9 +213,11 @@ class BottomSheetState(
         velocity: Float,
         onDismiss: (() -> Unit)?,
     ) {
-        if (velocity > 250) {
+        // Align fling threshold with Material BottomSheetBehavior's typical value
+        val significantVelocityThreshold = 300f
+        if (velocity > significantVelocityThreshold) {
             expand()
-        } else if (velocity < -250) {
+        } else if (velocity < -significantVelocityThreshold) {
             if (value < collapsedBound && onDismiss != null) {
                 dismiss()
                 onDismiss.invoke()
