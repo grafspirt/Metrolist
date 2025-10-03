@@ -246,24 +246,24 @@ fun BottomSheetPlayer(
                 val cachedColors = gradientColorsCache[currentMetadata.id]
                 if (cachedColors != null) {
                     gradientColors = cachedColors
-                } else {
+                    return@LaunchedEffect
+                }
+                withContext(Dispatchers.IO) {
                     val request = ImageRequest.Builder(context)
                         .data(currentMetadata.thumbnailUrl)
-                        .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
+                        .size(100, 100)
                         .allowHardware(false)
+                        .memoryCacheKey("gradient_${currentMetadata.id}")
                         .build()
 
-                    val result = runCatching {
-                        context.imageLoader.execute(request)
-                    }.getOrNull()
-
+                    val result = runCatching { context.imageLoader.execute(request) }.getOrNull()
                     if (result != null) {
                         val bitmap = result.image?.toBitmap()
                         if (bitmap != null) {
                             val palette = withContext(Dispatchers.Default) {
                                 Palette.from(bitmap)
-                                    .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                                    .maximumColorCount(8)
+                                    .resizeBitmapArea(100 * 100)
                                     .generate()
                             }
                             val extractedColors = PlayerColorExtractor.extractGradientColors(
@@ -271,16 +271,10 @@ fun BottomSheetPlayer(
                                 fallbackColor = fallbackColor
                             )
                             gradientColorsCache[currentMetadata.id] = extractedColors
-                            gradientColors = extractedColors
-                        } else {
-                            gradientColors = defaultGradientColors
+                            withContext(Dispatchers.Main) { gradientColors = extractedColors }
                         }
-                    } else {
-                        gradientColors = defaultGradientColors
                     }
                 }
-            } else {
-                gradientColors = emptyList()
             }
         } else {
             gradientColors = emptyList()
@@ -411,7 +405,7 @@ fun BottomSheetPlayer(
     LaunchedEffect(playbackState) {
         if (playbackState == STATE_READY) {
             while (isActive) {
-                delay(100)
+                delay(500)
                 position = playerConnection.player.currentPosition
                 duration = playerConnection.player.duration
             }
@@ -508,7 +502,7 @@ fun BottomSheetPlayer(
                             color = TextBackgroundColor,
                             modifier =
                             Modifier
-                                .basicMarquee()
+                                .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                                 .combinedClickable(
                                     enabled = true,
                                     indication = null,
@@ -548,7 +542,7 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .basicMarquee()
+                            .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                             .padding(end = 12.dp)
                     ) {
                         var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }

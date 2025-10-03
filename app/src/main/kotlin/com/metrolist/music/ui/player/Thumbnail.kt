@@ -257,7 +257,7 @@ fun Thumbnail(
                             style = MaterialTheme.typography.titleMedium,
                             color = textBackgroundColor.copy(alpha = 0.8f),
                             maxLines = 1,
-                            modifier = Modifier.basicMarquee()
+                            modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                         )
                     }
                 }
@@ -351,31 +351,22 @@ fun Thumbnail(
                                             )
                                         }
                                     } else {
-                                        // Blurred background
-                                        AsyncImage(
-                                            model = coil3.request.ImageRequest.Builder(LocalContext.current)
-                                                .data(item.mediaMetadata.artworkUri?.toString())
-                                                .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                                .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                                .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                                .build(),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.FillBounds,
+                                        // Simple background instead of expensive blur
+                                        Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .graphicsLayer(
-                                                    renderEffect = BlurEffect(radiusX = 75f, radiusY = 75f),
-                                                    alpha = 0.5f
-                                                )
+                                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                         )
-
-                                        // Main image
+                                        // Main image optimized
                                         AsyncImage(
                                             model = coil3.request.ImageRequest.Builder(LocalContext.current)
                                                 .data(item.mediaMetadata.artworkUri?.toString())
                                                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                                .memoryCacheKey(item.mediaId)
+                                                .diskCacheKey(item.mediaId)
+                                                .size(400, 400)
                                                 .build(),
                                             contentDescription = null,
                                             contentScale = ContentScale.Fit,
