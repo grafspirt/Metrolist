@@ -1039,21 +1039,25 @@ fun BottomSheetPlayer(
             val backgroundAlpha = state.progress.coerceIn(0f, 1f)
 
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR -> {
+            PlayerBackgroundStyle.BLUR -> {
                     Crossfade(
                         targetState = mediaMetadata?.thumbnailUrl,
                         animationSpec = tween(800)
                     ) { thumbnailUrl ->
                         if (thumbnailUrl != null) {
                             Box(modifier = Modifier.alpha(backgroundAlpha)) {
-                                AsyncImage(
-                                    model = thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .blur(220.dp)
-                                )
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(thumbnailUrl)
+                                    .size(100, 100)
+                                    .allowHardware(false)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .blur(if (useDarkTheme) 150.dp else 100.dp)
+                            )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
