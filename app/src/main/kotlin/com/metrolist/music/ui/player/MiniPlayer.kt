@@ -269,16 +269,16 @@ private fun NewMiniPlayer(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(48.dp)
                 ) {
-                    // Circular progress indicator around the play button
-                    if (duration > 0) {
-                        CircularProgressIndicator(
-                            progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
-                            modifier = Modifier.size(48.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 3.dp,
-                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                        )
-                    }
+            // Circular progress indicator around the play button (skip when buffering to reduce jank)
+            if (duration > 0 && playbackState != Player.STATE_BUFFERING) {
+                CircularProgressIndicator(
+                    progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 3.dp,
+                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+            }
                     
                     // Play/Pause button with thumbnail background
                     Box(

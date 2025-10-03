@@ -406,10 +406,11 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
+    // Throttle UI updates to 250ms to reduce recompositions during playback
     LaunchedEffect(playbackState) {
         if (playbackState == STATE_READY) {
             while (isActive) {
-                delay(100)
+                delay(250)
                 position = playerConnection.player.currentPosition
                 duration = playerConnection.player.duration
             }
