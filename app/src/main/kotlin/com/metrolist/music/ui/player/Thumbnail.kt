@@ -87,7 +87,7 @@ import kotlin.math.abs
 fun Thumbnail(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
-    isPlayerExpanded: Boolean = true, // Add parameter to control swipe based on player state
+    isPlayerExpanded: Boolean = true,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -274,14 +274,13 @@ fun Thumbnail(
                         state = thumbnailLazyGridState,
                         rows = GridCells.Fixed(1),
                         flingBehavior = rememberSnapFlingBehavior(thumbnailSnapLayoutInfoProvider),
-                        userScrollEnabled = swipeThumbnail && isPlayerExpanded, // Only allow swipe when player is expanded
+                        userScrollEnabled = swipeThumbnail && isPlayerExpanded,
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(
                             items = mediaItems,
-                            key = { item -> 
-                                // Use mediaId with stable fallback to avoid recomposition issues
-                                item.mediaId.ifEmpty { "unknown_${item.hashCode()}" }
+                            key = { item ->
+                                "thumbnail_${item.mediaId}_${item.mediaMetadata?.title.hashCode()}"
                             }
                         ) { item ->
                             val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
@@ -358,6 +357,8 @@ fun Thumbnail(
                                                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                                .memoryCacheKey("blur_${item.mediaId}")
+                                                .size(coil3.size.Size(300, 300))
                                                 .build(),
                                             contentDescription = null,
                                             contentScale = ContentScale.FillBounds,
@@ -376,6 +377,8 @@ fun Thumbnail(
                                                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                                .memoryCacheKey("main_${item.mediaId}")
+                                                .size(coil3.size.Size(500, 500))
                                                 .build(),
                                             contentDescription = null,
                                             contentScale = ContentScale.Fit,
