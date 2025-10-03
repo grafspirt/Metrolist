@@ -39,10 +39,10 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.key
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -270,19 +270,22 @@ fun Thumbnail(
                     val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
                     val containerMaxWidth = maxWidth
 
-                    LazyHorizontalGrid(
+    // Reduce recompositions by keying on current media id
+    val thumbnailKey = remember(mediaMetadata?.id) { mediaMetadata?.id ?: "default" }
+
+    key(thumbnailKey) {
+        LazyHorizontalGrid(
                         state = thumbnailLazyGridState,
                         rows = GridCells.Fixed(1),
                         flingBehavior = rememberSnapFlingBehavior(thumbnailSnapLayoutInfoProvider),
                         userScrollEnabled = swipeThumbnail && isPlayerExpanded, // Only allow swipe when player is expanded
                         modifier = Modifier.fillMaxSize()
-                    ) {
+        ) {
                         items(
                             items = mediaItems,
-                            key = { item -> 
-                                // Use mediaId with stable fallback to avoid recomposition issues
-                                item.mediaId.ifEmpty { "unknown_${item.hashCode()}" }
-                            }
+                key = { item ->
+                    "thumbnail_${item.mediaId}_${item.mediaMetadata?.title?.hashCode() ?: 0}"
+                }
                         ) { item ->
                             val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
                             var skipMultiplier by remember { mutableIntStateOf(1) }
@@ -351,31 +354,14 @@ fun Thumbnail(
                                             )
                                         }
                                     } else {
-                                        // Blurred background
+                                        // Main image (optimized request size and caching)
                                         AsyncImage(
                                             model = coil3.request.ImageRequest.Builder(LocalContext.current)
                                                 .data(item.mediaMetadata.artworkUri?.toString())
                                                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                                                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                                .build(),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.FillBounds,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .graphicsLayer(
-                                                    renderEffect = BlurEffect(radiusX = 75f, radiusY = 75f),
-                                                    alpha = 0.5f
-                                                )
-                                        )
-
-                                        // Main image
-                                        AsyncImage(
-                                            model = coil3.request.ImageRequest.Builder(LocalContext.current)
-                                                .data(item.mediaMetadata.artworkUri?.toString())
-                                                .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                                .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                                .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                                .size(300, 300)
                                                 .build(),
                                             contentDescription = null,
                                             contentScale = ContentScale.Fit,
@@ -389,6 +375,7 @@ fun Thumbnail(
                 }
             }
         }
+    }
 
         // Seek effect
         LaunchedEffect(showSeekEffect) {

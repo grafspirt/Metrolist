@@ -243,44 +243,42 @@ fun BottomSheetPlayer(
         if (playerBackground == PlayerBackgroundStyle.GRADIENT) {
             val currentMetadata = mediaMetadata
             if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
-                val cachedColors = gradientColorsCache[currentMetadata.id]
-                if (cachedColors != null) {
-                    gradientColors = cachedColors
+                // Prevent repeated processing for the same id
+                val cached = gradientColorsCache[currentMetadata.id]
+                if (cached != null) {
+                    gradientColors = cached
                 } else {
-                    val request = ImageRequest.Builder(context)
-                        .data(currentMetadata.thumbnailUrl)
-                        .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                        .allowHardware(false)
-                        .build()
+                    withContext(Dispatchers.IO) {
+                        val request = ImageRequest.Builder(context)
+                            .data(currentMetadata.thumbnailUrl)
+                            .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
+                            .allowHardware(false)
+                            .build()
 
-                    val result = runCatching {
-                        context.imageLoader.execute(request)
-                    }.getOrNull()
+                        val result = runCatching {
+                            context.imageLoader.execute(request)
+                        }.getOrNull()
 
-                    if (result != null) {
-                        val bitmap = result.image?.toBitmap()
-                        if (bitmap != null) {
-                            val palette = withContext(Dispatchers.Default) {
-                                Palette.from(bitmap)
+                        if (result != null) {
+                            val bitmap = result.image?.toBitmap()
+                            if (bitmap != null) {
+                                val palette = Palette.from(bitmap)
                                     .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
                                     .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
                                     .generate()
+
+                                val extractedColors = PlayerColorExtractor.extractGradientColors(
+                                    palette = palette,
+                                    fallbackColor = fallbackColor
+                                )
+                                withContext(Dispatchers.Main) {
+                                    gradientColorsCache[currentMetadata.id] = extractedColors
+                                    gradientColors = extractedColors
+                                }
                             }
-                            val extractedColors = PlayerColorExtractor.extractGradientColors(
-                                palette = palette,
-                                fallbackColor = fallbackColor
-                            )
-                            gradientColorsCache[currentMetadata.id] = extractedColors
-                            gradientColors = extractedColors
-                        } else {
-                            gradientColors = defaultGradientColors
                         }
-                    } else {
-                        gradientColors = defaultGradientColors
                     }
                 }
-            } else {
-                gradientColors = emptyList()
             }
         } else {
             gradientColors = emptyList()

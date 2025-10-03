@@ -41,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -132,6 +133,14 @@ private fun NewMiniPlayer(
     val coroutineScope = rememberCoroutineScope()
     val swipeSensitivity by rememberPreference(SwipeSensitivityKey, 0.73f)
     val swipeThumbnail by rememberPreference(com.metrolist.music.constants.SwipeThumbnailKey, true)
+    // Derived states to reduce recomposition
+    val title by remember(mediaMetadata) { derivedStateOf { mediaMetadata?.title ?: "" } }
+    val artists by remember(mediaMetadata) {
+        derivedStateOf { mediaMetadata?.artists?.joinToString { it.name } ?: "" }
+    }
+    val showThumbnail by remember(mediaMetadata, playbackState) {
+        derivedStateOf { mediaMetadata?.thumbnailUrl != null && playbackState != Player.STATE_BUFFERING }
+    }
     
     val offsetXAnimatable = remember { Animatable(0f) }
     var dragStartTime by remember { mutableLongStateOf(0L) }
@@ -291,16 +300,18 @@ private fun NewMiniPlayer(
                                 }
                             }
                     ) {
-                        // Thumbnail background
-                        mediaMetadata?.let { metadata ->
-                            AsyncImage(
-                                model = metadata.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
+                        // Thumbnail background (only when not buffering)
+                        if (showThumbnail) {
+                            mediaMetadata?.let { metadata ->
+                                AsyncImage(
+                                    model = metadata.thumbnailUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                )
+                            }
                         }
                         
                         // Semi-transparent overlay for better icon visibility
@@ -343,7 +354,7 @@ private fun NewMiniPlayer(
                 ) {
                     mediaMetadata?.let { metadata ->
                         AnimatedContent(
-                            targetState = metadata.title,
+                            targetState = title,
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
                             label = "",
                         ) { title ->
@@ -359,7 +370,7 @@ private fun NewMiniPlayer(
                         }
 
                         AnimatedContent(
-                            targetState = metadata.artists.joinToString { it.name },
+                            targetState = artists,
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
                             label = "",
                         ) { artists ->
